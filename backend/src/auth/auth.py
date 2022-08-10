@@ -45,25 +45,26 @@ def get_token_auth_header():
 
     headers_parts = auth_header.split(' ')
 
+    # make sure the token is a Bearer Token
     if headers_parts[0].lower() != 'bearer':
         raise AuthError({
             'code': 'invalid_header',
             'description': 'Authorization header must start with "Bearer".'
         }, 401)
-    elif len(headers_parts) == 1:
+
+    # bearer token should have 2 parts
+    if len(headers_parts) == 1:
         raise AuthError({
             'code': 'invalid_header',
             'description': 'Token not found.'
         })
-
     elif len(headers_parts) > 2:
         raise AuthError({
             'code': 'invalid_header',
-            'description': 'Authorization header must be bearer token.'
+            'description': 'Authorization Header must be a Bearer token'
         })
-
-    token = headers_parts[1]
-    return token
+    # else return the token
+    return headers_parts[1]
 
 
 '''
@@ -80,12 +81,15 @@ def get_token_auth_header():
 
 
 def check_permissions(permission, payload):
+
+    # check permissions absence in the payload to throw an error
     if 'permissions' not in payload:
         raise AuthError({
             'code': 'invalid_claims',
             'description': 'Permissions not included in JWT.'
         }, 400)
 
+    # check a specified permission absence in permissions list to throw an error
     if permission not in payload['permissions']:
         raise AuthError({
             'code': 'unauthorized',
@@ -177,6 +181,7 @@ def verify_decode_jwt(token):
 '''
 
 
+# permission decorator
 def requires_auth(permission=''):
     def requires_auth_decorator(f):
         @wraps(f)

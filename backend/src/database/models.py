@@ -36,14 +36,14 @@ def db_drop_and_create_all():
     db.create_all()
     # add a demo record to use it POSTMAN test
     drink = Drink(
-        title='water',
-        recipe='[{"name": "water", "color": "blue", "parts": 1}]'
+        title='DrinkTest',
+        recipe='[{"name": "TesterChedly", "color": "brown", "parts": 1}]'
     )
 
     drink.insert()
-# ROUTES
 
 
+# MODELS
 '''
 Drink
 a persistent drink entity, extends the base SQLAlchemy Model

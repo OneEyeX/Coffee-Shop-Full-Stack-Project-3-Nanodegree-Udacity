@@ -1,9 +1,6 @@
-import os
 from flask import Flask, request, jsonify, abort
-from sqlalchemy import exc
 import json
 from flask_cors import CORS
-
 from .database.models import db_drop_and_create_all, setup_db, Drink
 from .auth.auth import AuthError, requires_auth
 
@@ -17,7 +14,9 @@ CORS(app)
 !! NOTE THIS MUST BE UNCOMMENTED ON FIRST RUN
 !! Running this function will add one
 '''
+# uncomment this line below before testing with POSTMAN
 # db_drop_and_create_all()
+
 
 # ROUTES
 '''
@@ -30,17 +29,20 @@ CORS(app)
 '''
 
 
+# get ALL the drinks (without details)
 @app.route('/drinks', methods=['GET'])
 def get_drinks():
-    if request.method == "GET":
-        # query the database
-        drinks_query = Drink.query.all()
+    # query the database
+    drinks_query = Drink.query.all()
 
-        drinks = [drink.short() for drink in drinks_query]
-        return jsonify({
-            'success': True,
-            'drinks': drinks
-        }), 200
+    # transform drinks to short representation form (without details)
+    drinks = [drink.short() for drink in drinks_query]
+
+    # return a success response and the drinks list
+    return jsonify({
+        'success': True,
+        'drinks': drinks
+    }), 200
 
 
 '''
@@ -53,18 +55,20 @@ def get_drinks():
 '''
 
 
+# get ALL the drinks (with details)
 @app.route('/drinks-detail', methods=['GET'])
 @requires_auth('get:drinks-detail')
 def get_drinks_detail(payload):
-    if request.method == "GET":
-        # query the database
-        drinks_query = Drink.query.all()
+    # query the database
+    drinks_query = Drink.query.all()
 
-        drinks = [drink.long() for drink in drinks_query]
-        return jsonify({
-            'success': True,
-            'drinks': drinks
-        }), 200
+    # transform drinks to long representation form (with details)
+    drinks = [drink.long() for drink in drinks_query]
+    # return a success response and the drinks list
+    return jsonify({
+        'success': True,
+        'drinks': drinks
+    }), 200
 
 
 '''
@@ -78,39 +82,38 @@ def get_drinks_detail(payload):
 '''
 
 
+# ADD a drink
 @app.route('/drinks', methods=['POST'])
 @requires_auth('post:drinks')
-def post_drink(payload):
-    # if the method is POST
-    if request.method == "POST":
-        # get the data
-        body = request.get_json()
-        # print(body)
-        title = body.get('title') or None
-        recipe = body.get('recipe') or None
-        # make sure all inputs are present
-        # abort if one of the inputs is missing
-        if title is None or recipe is None:
-            abort(400)
+def add_drink(payload):
+    # retrieve the user inputs
+    body = request.get_json()
 
-        try:
-            recipe = body['recipe']
-            if type(recipe) is dict:
-                recipe = [recipe]
+    title = body.get('title') or None
+    recipe = body.get('recipe') or None
+    # make sure all inputs are present
+    # abort if one of the inputs is missing
+    if title is None or recipe is None:
+        abort(400)
 
-            title = body['title']
-            # create an instance and serialize recipe to str
-            drink = Drink(title=title, recipe=json.dumps(recipe))
-            drink.insert()
-            drinks = [drink.long()]
+    try:
+        # check the recipe type
+        if type(recipe) is dict:
+            recipe = [recipe]
 
-            return jsonify({
-                'success': True,
-                'drinks': drinks
-            })
+        # create a drink and add it to the database
+        new_drink = Drink(title=title, recipe=json.dumps(recipe))
+        new_drink.insert()
 
-        except:
-            abort(422)
+        # return a success response and the new drink informations
+        return jsonify({
+            'success': True,
+            'drinks': [new_drink.long()]
+        })
+
+    # abort if something went wrong
+    except:
+        abort(422)
 
 
 '''
@@ -126,38 +129,43 @@ def post_drink(payload):
 '''
 
 
+# Modify a specific drink
 @app.route('/drinks/<int:drink_id>', methods=['PATCH'])
 @requires_auth('patch:drinks')
-def patch_drink(payload, drink_id):
-    if request.method == "PATCH":
-        body = request.get_json()
-        # print(body)
+def update_drink(payload, drink_id):
 
-        drink = Drink.query.filter(Drink.id == drink_id).one_or_none()
-        # abort if drink is not found
-        if not drink:
-            abort(404)
+    # query the database for the drink with the given id
+    drink_to_update = Drink.query.filter(Drink.id == drink_id).one_or_none()
+    # abort if drink is not found
+    if not drink_to_update:
+        abort(404)
 
-        try:
-            title = body.get('title') or None
-            recipe = body.get('recipe') or None
-            if title is not None:
-                drink.title = title
-            if recipe is not None:
-                # drink.recipe = json.dumps(body['recipe'])
-                drink.recipe = json.dumps(recipe)
+    # retrieve the user inputs
+    body = request.get_json()
+    # else, try to update the drink informations
+    try:
+        title = body.get('title') or None
+        recipe = body.get('recipe') or None
 
-            drink.update()
+        # if there is a new title update it else just keep the existing title
+        if title is not None:
+            drink_to_update.title = title
 
-            drinks = [drink.long()]
+        # if there is a new recipe update it else just keep the existing recipe
+        if recipe is not None:
+            # drink.recipe = json.dumps(body['recipe'])
+            drink_to_update.recipe = json.dumps(recipe)
 
-            return jsonify({
-                'success': True,
-                'drinks': drinks
-            }), 200
+        drink_to_update.update()
 
-        except:
-            abort(422)
+        # return a success response and the updated drink informations
+        return jsonify({
+            'success': True,
+            'drinks': [drink_to_update.long()]
+        }), 200
+
+    except:
+        abort(422)
 
 
 '''
@@ -172,23 +180,26 @@ def patch_drink(payload, drink_id):
 '''
 
 
+# delete a drink
 @app.route('/drinks/<int:drink_id>', methods=['DELETE'])
 @requires_auth('delete:drinks')
 def delete_drink(payload, drink_id):
-    if request.method == "DELETE":
-        drink = Drink.query.filter(Drink.id == drink_id).one_or_none()
+    # query the database
+    drink_to_delete = Drink.query.filter(Drink.id == drink_id).one_or_none()
+    # if the drink is not found abort the operation
+    if drink_to_delete is None:
+        abort(404)
+    # else, try to delete the drink
+    try:
+        drink_to_delete.delete()
 
-        if drink is None:
-            abort(404)
-
-        try:
-            drink.delete()
-            return jsonify({
-                'success': True,
-                'delete': drink.id
-            }), 200
-        except:
-            abort(422)
+        # return a success response and the deleted drink id
+        return jsonify({
+            'success': True,
+            'delete': drink_to_delete.id
+        }), 200
+    except:
+        abort(422)
 
 
 # Error Handling
@@ -207,6 +218,7 @@ Example error handling for unprocessable entity
 '''
 
 
+# bad request error handler
 @app.errorhandler(400)
 def bad_request(error):
     return jsonify({
@@ -216,6 +228,7 @@ def bad_request(error):
     }), 400
 
 
+# unauthorized error handler
 @app.errorhandler(401)
 def unauthorized(error):
     return jsonify({
@@ -231,6 +244,7 @@ def unauthorized(error):
 '''
 
 
+# not found resources error handler
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({
@@ -240,6 +254,7 @@ def not_found(error):
     }), 404
 
 
+# unallowed method error handler
 @app.errorhandler(405)
 def method_not_allowed(error):
     return jsonify({
@@ -249,6 +264,7 @@ def method_not_allowed(error):
     }), 405
 
 
+# Unprocessable request error handler
 @app.errorhandler(422)
 def unprocessable(error):
     return jsonify({
@@ -258,6 +274,7 @@ def unprocessable(error):
     }), 422
 
 
+# Server error handler
 @app.errorhandler(500)
 def internal_server_error(error):
     return jsonify({
