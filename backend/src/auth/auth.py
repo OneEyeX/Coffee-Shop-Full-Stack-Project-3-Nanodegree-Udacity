@@ -114,7 +114,7 @@ def check_permissions(permission, payload):
 '''
 
 
-# https://auth0.com/docs/quickstart/backend/python/01-authorization
+# Auth0 documentation used: https://auth0.com/docs/quickstart/backend/python/01-authorization
 def verify_decode_jwt(token):
     jsonurl = urlopen(f'https://{AUTH0_DOMAIN}/.well-known/jwks.json')
     jwks = json.loads(jsonurl.read())
